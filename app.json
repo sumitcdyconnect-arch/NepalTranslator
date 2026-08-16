@@ -3,6 +3,7 @@
     "name": "NepalTranslator",
     "slug": "NepalTranslator",
     "version": "1.0.0",
+    "owner": "sumitchaudharyy",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "nepaltranslator",
@@ -11,6 +12,7 @@
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "package": "com.sumitchaudharyy.nepaltranslator",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -39,6 +41,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0099eebb-27b6-40f5-bd36-1259e6918fc7"
+      }
     }
   }
 }

@@ -1,44 +1,32 @@
 import { useEffect, useState } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
-import { useColorScheme } from 'react-native';
+import { Stack } from 'expo-router';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
-import PaywallScreen from '@/app/paywall';
-import { initTrial, getTrialStatus } from '@/utils/trial';
+import { initCredits } from '@/utils/credits';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
-  const [trialChecked, setTrialChecked] = useState(false);
-  const [isTrialExpired, setIsTrialExpired] = useState(false);
+export default function RootLayout() {
+  const [initDone, setInitDone] = useState(false);
 
   useEffect(() => {
-    const checkTrial = async () => {
-      await initTrial();
-      const status = await getTrialStatus();
-      console.log('[Trial Status]', status);
-      setIsTrialExpired(status.isExpired);
-      setTrialChecked(true);
+    const init = async () => {
+      await initCredits();
+      setInitDone(true);
     };
-    checkTrial();
+    init();
   }, []);
 
-  if (!trialChecked) {
-    return (
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <AnimatedSplashOverlay />
-      </ThemeProvider>
-    );
-  }
-
-  if (isTrialExpired) {
-    return <PaywallScreen />;
+  if (!initDone) {
+    return <AnimatedSplashOverlay />;
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack>
+      <Stack.Screen
+        name="(tabs)"
+        options={{ headerShown: false }}
+      />
+      <Stack.Screen name="unlock" options={{ title: 'Unlock' }} />
+      <Stack.Screen name="paywall" options={{ title: 'Unlock' }} />
+    </Stack>
   );
 }

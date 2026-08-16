@@ -1,5 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect, router } from 'expo-router';
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +13,7 @@ import {
 } from 'react-native';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { initCredits, getCredits, useCredit, isActivated } from '@/utils/credits';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -34,6 +36,26 @@ export default function TranslatorScreen() {
   const [loading, setLoading] = useState(false);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
+  const [credits, setCredits] = useState<number | null>(50);
+  const [activated, setActivated] = useState(false);
+
+  useEffect(() => {
+    initCredits();
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      const check = async () => {
+        const act = await isActivated();
+        setActivated(act);
+        if (!act) {
+          const c = await getCredits();
+          setCredits(c);
+        }
+      };
+      check();
+    }, [])
+  );
 
   const swapLanguages = () => {
     setFromLang(toLang);
@@ -45,6 +67,16 @@ export default function TranslatorScreen() {
   const translate = async () => {
     Keyboard.dismiss();
     if (!inputText.trim()) return;
+
+    if (!activated) {
+      const { allowed, remaining } = await useCredit();
+      if (!allowed) {
+        Alert.alert('No credits remaining', 'Purchase to continue.');
+        return;
+      }
+      setCredits(remaining);
+    }
+
     setLoading(true);
     setResult('');
     try {
@@ -102,8 +134,40 @@ export default function TranslatorScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
 
-        {/* Header */}
         <Text style={styles.header}>🏔️ Nepal Translator</Text>
+
+        {/* Credit Bar */}
+        {!activated && credits !== null && (
+          <View style={styles.creditBar}>
+            <View style={styles.creditBarHeader}>
+              <Text style={styles.creditBarLabel}>Free translations</Text>
+              <Text style={[styles.creditBarCount, credits <= 10 && styles.creditBarLow]}>
+                {credits}/50
+              </Text>
+            </View>
+            <View style={styles.creditBarTrack}>
+              <View style={[
+                styles.creditBarFill,
+                { width: `${(credits / 50) * 100}%` as any },
+                credits <= 10 && styles.creditBarFillLow,
+              ]} />
+            </View>
+            {credits <= 20 && (
+              <Text style={styles.creditBarWarning}>
+                {credits <= 10
+                  ? '🚨 Running low — unlock before your trek'
+                  : '⚠️ Consider unlocking before heading to the mountains'}
+              </Text>
+            )}
+          </View>
+        )}
+
+        {/* Unlock Button */}
+        {!activated && credits !== null && (
+          <TouchableOpacity style={styles.unlockButton} onPress={() => router.push('/unlock')}>
+            <Text style={styles.unlockButtonText}>Unlock App — Unlimited Translations</Text>
+          </TouchableOpacity>
+        )}
 
         {/* Language Selector Row */}
         <View style={styles.langRow}>
@@ -128,7 +192,6 @@ export default function TranslatorScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Language Pickers */}
         <LanguagePicker
           visible={showFromPicker}
           selected={fromLang}
@@ -155,13 +218,12 @@ export default function TranslatorScreen() {
           <Text style={styles.charCount}>{inputText.length}/500</Text>
         </View>
 
-        {/* Translate Button */}
         <TouchableOpacity style={styles.translateButton} onPress={translate}>
           <Text style={styles.translateButtonText}>Translate</Text>
         </TouchableOpacity>
 
-        {/* Result */}
         {loading && <ActivityIndicator size="large" color="#E63946" style={{ marginTop: 24 }} />}
+
         {result !== '' && !loading && (
           <TouchableOpacity
             style={styles.resultBox}
@@ -185,6 +247,31 @@ const styles = StyleSheet.create({
   scroll: { padding: 20, gap: 16 },
   header: { fontSize: 24, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 },
 
+  creditBar: {
+    backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, gap: 8,
+  },
+  creditBarHeader: {
+    flexDirection: 'row', justifyContent: 'space-between',
+  },
+  creditBarLabel: { color: '#999', fontSize: 13 },
+  creditBarCount: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  creditBarLow: { color: '#E63946' },
+  creditBarTrack: {
+    height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden',
+  },
+  creditBarFill: {
+    height: 6, backgroundColor: '#4CAF50', borderRadius: 3,
+  },
+  creditBarFillLow: { backgroundColor: '#E63946' },
+  creditBarWarning: { color: '#E63946', fontSize: 12 },
+
+  unlockButton: {
+    backgroundColor: '#1e1e1e', borderRadius: 12,
+    padding: 14, alignItems: 'center',
+    borderWidth: 1, borderColor: '#E63946',
+  },
+  unlockButtonText: { color: '#E63946', fontSize: 14, fontWeight: '700' },
+
   langRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   langButton: {
     flex: 1, backgroundColor: '#1e1e1e', borderRadius: 12,
@@ -199,8 +286,7 @@ const styles = StyleSheet.create({
   swapText: { color: '#fff', fontSize: 20 },
 
   picker: {
-    backgroundColor: '#1e1e1e', borderRadius: 12,
-    padding: 8, gap: 4,
+    backgroundColor: '#1e1e1e', borderRadius: 12, padding: 8, gap: 4,
   },
   pickerItem: { padding: 12, borderRadius: 8 },
   pickerItemActive: { backgroundColor: '#E63946' },

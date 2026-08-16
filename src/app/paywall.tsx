@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 
 export default function PaywallScreen() {
   return (
@@ -8,7 +9,7 @@ export default function PaywallScreen() {
         <Text style={styles.icon}>🏔️</Text>
         <Text style={styles.title}>Your free trial has ended</Text>
         <Text style={styles.subtitle}>
-          Purchase once to unlock full offline translation forever — no subscription.
+          You have used all 30 free translations. Purchase once for unlimited access forever.
         </Text>
 
         <View style={styles.features}>
@@ -20,7 +21,7 @@ export default function PaywallScreen() {
 
         <TouchableOpacity
           style={styles.buyButton}
-          onPress={() => Alert.alert('Purchase', 'Payment integration coming soon — unlock for $2 lifetime access.')}
+          onPress={() => router.push('/unlock')}
         >
           <Text style={styles.buyButtonText}>Unlock for $2</Text>
         </TouchableOpacity>
