@@ -1,15 +1,18 @@
 import * as Clipboard from 'expo-clipboard';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import {
-  ActivityIndicator,
+  Animated,
   Alert,
   Keyboard,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
+  TouchableWithoutFeedback,
   View,
+  useColorScheme,
+  Platform,
 } from 'react-native';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -28,7 +31,34 @@ const LANGUAGES = [
   { code: 'es', label: 'Spanish' },
 ];
 
+const light = {
+  bg: '#FAFAF8',
+  card: '#FFFFFF',
+  cardAlt: '#F2F1EE',
+  text: '#1C1C1E',
+  textSub: '#8A8A8E',
+  primary: '#DC143C',
+  border: '#E5E4E0',
+  inputBg: '#F7F6F3',
+  shadow: '#00000012',
+};
+
+const dark = {
+  bg: '#111110',
+  card: '#1C1C1E',
+  cardAlt: '#2C2C2E',
+  text: '#F5F5F0',
+  textSub: '#8A8A8E',
+  primary: '#DC143C',
+  border: '#2C2C2E',
+  inputBg: '#1C1C1E',
+  shadow: '#00000040',
+};
+
 export default function TranslatorScreen() {
+  const scheme = useColorScheme();
+  const t = scheme === 'dark' ? dark : light;
+
   const [fromLang, setFromLang] = useState(LANGUAGES[0]);
   const [toLang, setToLang] = useState(LANGUAGES[1]);
   const [inputText, setInputText] = useState('');
@@ -36,8 +66,12 @@ export default function TranslatorScreen() {
   const [loading, setLoading] = useState(false);
   const [showFromPicker, setShowFromPicker] = useState(false);
   const [showToPicker, setShowToPicker] = useState(false);
-  const [credits, setCredits] = useState<number | null>(50);
+  const [credits, setCredits] = useState<number>(50);
   const [activated, setActivated] = useState(false);
+
+  const resultAnim = useRef(new Animated.Value(0)).current;
+  const resultOpacity = useRef(new Animated.Value(0)).current;
+  const progressAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     initCredits();
@@ -57,6 +91,33 @@ export default function TranslatorScreen() {
     }, [])
   );
 
+  const animateResult = () => {
+    resultAnim.setValue(40);
+    resultOpacity.setValue(0);
+    Animated.parallel([
+      Animated.spring(resultAnim, {
+        toValue: 0,
+        tension: 60,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(resultOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const startProgress = () => {
+    progressAnim.setValue(0);
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: 2000,
+      useNativeDriver: false,
+    }).start();
+  };
+
   const swapLanguages = () => {
     setFromLang(toLang);
     setToLang(fromLang);
@@ -71,249 +132,286 @@ export default function TranslatorScreen() {
     if (!activated) {
       const { allowed, remaining } = await useCredit();
       if (!allowed) {
-        Alert.alert('No credits remaining', 'Purchase to continue.');
+        Alert.alert('No credits remaining', 'Purchase unlimited access to continue.');
         return;
       }
       setCredits(remaining);
     }
 
     setLoading(true);
+    startProgress();
+    animateResult();
     setResult('');
     try {
       const response = await fetch('https://nepaltranslatorapi.onrender.com/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: inputText,
-          from: fromLang.code,
-          to: toLang.code,
-        }),
+        body: JSON.stringify({ text: inputText, from: fromLang.code, to: toLang.code }),
       });
       const data = await response.json();
       if (data.translation) {
         setResult(data.translation);
+        animateResult();
       } else {
         Alert.alert('Error', data.error || 'Translation failed.');
       }
-    } catch (e) {
+    } catch {
       Alert.alert('Error', 'Cannot reach server. Check your connection.');
     }
     setLoading(false);
   };
 
-  const LanguagePicker = ({
-    visible,
-    selected,
-    onSelect,
-    exclude,
-  }: {
-    visible: boolean;
-    selected: typeof LANGUAGES[0];
-    onSelect: (lang: typeof LANGUAGES[0]) => void;
-    exclude: typeof LANGUAGES[0];
-  }) => {
-    if (!visible) return null;
-    return (
-      <View style={styles.picker}>
-        {LANGUAGES.filter((l) => l.code !== exclude.code).map((lang) => (
-          <TouchableOpacity
-            key={lang.code}
-            style={[styles.pickerItem, selected.code === lang.code && styles.pickerItemActive]}
-            onPress={() => onSelect(lang)}
-          >
-            <Text style={[styles.pickerItemText, selected.code === lang.code && styles.pickerItemTextActive]}>
-              {lang.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-    );
+  const closePickers = () => {
+    setShowFromPicker(false);
+    setShowToPicker(false);
   };
 
+  const isLow = credits <= 10;
+  const isWarning = credits <= 20 && !activated;
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+    <SafeAreaView style={[s.root, { backgroundColor: t.bg }]}>
+      <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); closePickers(); }}>
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
 
-        <Text style={styles.header}>🏔️ Nepal Translator</Text>
+          {/* Header */}
+          <View style={s.headerRow}>
+            <Text style={[s.headerTitle, { color: t.text }]}>Nepal</Text>
+            <Text style={[s.headerAccent, { color: t.primary }]}>Translate</Text>
+          </View>
+          <Text style={[s.headerSub, { color: t.textSub }]}>
+            {activated ? 'Unlimited access' : `${credits} of 50 free translations`}
+          </Text>
 
-        {/* Credit Bar */}
-        {!activated && credits !== null && (
-          <View style={styles.creditBar}>
-            <View style={styles.creditBarHeader}>
-              <Text style={styles.creditBarLabel}>Free translations</Text>
-              <Text style={[styles.creditBarCount, credits <= 10 && styles.creditBarLow]}>
-                {credits}/50
-              </Text>
-            </View>
-            <View style={styles.creditBarTrack}>
+          {/* Credit hairline */}
+          {!activated && (
+            <View style={[s.creditLine, { backgroundColor: t.border }]}>
               <View style={[
-                styles.creditBarFill,
-                { width: `${(credits / 50) * 100}%` as any },
-                credits <= 10 && styles.creditBarFillLow,
+                s.creditFill,
+                {
+                  width: `${(credits / 50) * 100}%` as any,
+                  backgroundColor: isLow ? t.primary : t.primary + '66',
+                },
               ]} />
             </View>
-            {credits <= 20 && (
-              <Text style={styles.creditBarWarning}>
-                {credits <= 10
-                  ? '🚨 Running low — unlock before your trek'
-                  : '⚠️ Consider unlocking before heading to the mountains'}
-              </Text>
-            )}
+          )}
+
+          {/* Warning */}
+          {isWarning && (
+            <Text style={[s.warningText, { color: t.primary }]}>
+              {isLow ? '🚨 Running low — unlock before your trek' : '⚠️ Unlock before heading into the mountains'}
+            </Text>
+          )}
+
+          {/* Language Selector — unified card */}
+          <View style={[s.langCard, { backgroundColor: t.card, borderColor: t.border,
+            shadowColor: t.shadow,
+          }]}>
+            <TouchableOpacity
+              style={s.langSide}
+              onPress={() => { setShowFromPicker(!showFromPicker); setShowToPicker(false); }}
+            >
+              <Text style={[s.langLabel, { color: t.textSub }]}>FROM</Text>
+              <Text style={[s.langValue, { color: t.text }]}>{fromLang.label}</Text>
+              <Text style={[s.langChevron, { color: t.textSub }]}>▾</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[s.swapZone]} onPress={swapLanguages}>
+              <View style={[s.swapPill, { backgroundColor: t.primary }]}>
+                <Text style={s.swapIcon}>⇄</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[s.langSide, s.langRight]}
+              onPress={() => { setShowToPicker(!showToPicker); setShowFromPicker(false); }}
+            >
+              <Text style={[s.langLabel, { color: t.textSub }]}>TO</Text>
+              <Text style={[s.langValue, { color: t.text }]}>{toLang.label}</Text>
+              <Text style={[s.langChevron, { color: t.textSub }]}>▾</Text>
+            </TouchableOpacity>
           </View>
-        )}
 
-        {/* Unlock Button */}
-        {!activated && credits !== null && (
-          <TouchableOpacity style={styles.unlockButton} onPress={() => router.push('/unlock')}>
-            <Text style={styles.unlockButtonText}>Unlock App — Unlimited Translations</Text>
-          </TouchableOpacity>
-        )}
+          {/* From picker */}
+          {showFromPicker && (
+            <View style={[s.picker, { backgroundColor: t.card, borderColor: t.border }]}>
+              {LANGUAGES.filter(l => l.code !== toLang.code).map(lang => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[s.pickerItem, fromLang.code === lang.code && { backgroundColor: t.primary + '18' }]}
+                  onPress={() => { setFromLang(lang); setShowFromPicker(false); }}
+                >
+                  <Text style={[s.pickerText, { color: fromLang.code === lang.code ? t.primary : t.text }]}>
+                    {lang.label}
+                  </Text>
+                  {fromLang.code === lang.code && <Text style={{ color: t.primary }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-        {/* Language Selector Row */}
-        <View style={styles.langRow}>
-          <TouchableOpacity
-            style={styles.langButton}
-            onPress={() => { setShowFromPicker(!showFromPicker); setShowToPicker(false); }}
-          >
-            <Text style={styles.langButtonText}>{fromLang.label}</Text>
-            <Text style={styles.langArrow}>▼</Text>
-          </TouchableOpacity>
+          {/* To picker */}
+          {showToPicker && (
+            <View style={[s.picker, { backgroundColor: t.card, borderColor: t.border }]}>
+              {LANGUAGES.filter(l => l.code !== fromLang.code).map(lang => (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[s.pickerItem, toLang.code === lang.code && { backgroundColor: t.primary + '18' }]}
+                  onPress={() => { setToLang(lang); setShowToPicker(false); }}
+                >
+                  <Text style={[s.pickerText, { color: toLang.code === lang.code ? t.primary : t.text }]}>
+                    {lang.label}
+                  </Text>
+                  {toLang.code === lang.code && <Text style={{ color: t.primary }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
 
-          <TouchableOpacity style={styles.swapButton} onPress={swapLanguages}>
-            <Text style={styles.swapText}>⇄</Text>
-          </TouchableOpacity>
+          {/* Input */}
+          <View style={[s.inputCard, { backgroundColor: t.inputBg, borderColor: t.border }]}>
+            <TextInput
+              style={[s.input, { color: t.text }]}
+              placeholder={`Type in ${fromLang.label}...`}
+              placeholderTextColor={t.textSub}
+              multiline
+              value={inputText}
+              onChangeText={text => text.length <= 500 && setInputText(text)}
+            />
+            <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
+          </View>
 
-          <TouchableOpacity
-            style={styles.langButton}
-            onPress={() => { setShowToPicker(!showToPicker); setShowFromPicker(false); }}
-          >
-            <Text style={styles.langButtonText}>{toLang.label}</Text>
-            <Text style={styles.langArrow}>▼</Text>
-          </TouchableOpacity>
-        </View>
+          {/* Translate button — centered pill */}
+          <View style={s.btnRow}>
+            <TouchableOpacity
+              style={[s.translateBtn, { backgroundColor: t.primary }]}
+              onPress={translate}
+              activeOpacity={0.85}
+            >
+              <Text style={s.translateBtnText}>Translate</Text>
+            </TouchableOpacity>
+          </View>
 
-        <LanguagePicker
-          visible={showFromPicker}
-          selected={fromLang}
-          exclude={toLang}
-          onSelect={(lang) => { setFromLang(lang); setShowFromPicker(false); }}
-        />
-        <LanguagePicker
-          visible={showToPicker}
-          selected={toLang}
-          exclude={fromLang}
-          onSelect={(lang) => { setToLang(lang); setShowToPicker(false); }}
-        />
+          {/* Result */}
+          {(loading || result !== '') && (
+            <Animated.View style={{ transform: [{ translateY: resultAnim }], opacity: resultOpacity }}>
+              <View style={[s.resultCard, { backgroundColor: t.card, borderColor: t.border }]}>
+                {/* Animated left border */}
+                <Animated.View style={{
+                  position: 'absolute',
+                  left: 0, top: 0, bottom: 0,
+                  width: 3,
+                  borderRadius: 3,
+                  backgroundColor: t.primary,
+                  transform: [{
+                    scaleY: loading ? progressAnim : 1
+                  }],
+                  transformOrigin: 'top',
+                }} />
+                {loading ? (
+                  <Text style={[s.resultLang, { color: t.textSub }]}>TRANSLATING...</Text>
+                ) : (
+                  <TouchableOpacity onPress={() => { Clipboard.setStringAsync(result); Alert.alert('Copied', 'Translation copied to clipboard.'); }}>
+                    <Text style={[s.resultLang, { color: t.primary }]}>{toLang.label.toUpperCase()}</Text>
+                    <Text style={[s.resultText, { color: t.text }]}>{result}</Text>
+                    <Text style={[s.resultCopy, { color: t.textSub }]}>Tap to copy</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </Animated.View>
+          )}
 
-        {/* Input */}
-        <View style={styles.inputWrapper}>
-          <TextInput
-            style={styles.input}
-            placeholder={`Type in ${fromLang.label}... (add . or ?)`}
-            placeholderTextColor="#888"
-            multiline
-            value={inputText}
-            onChangeText={(text) => text.length <= 500 && setInputText(text)}
-          />
-          <Text style={styles.charCount}>{inputText.length}/500</Text>
-        </View>
+          {/* Unlock link */}
+          {!activated && (
+            <TouchableOpacity style={s.unlockLink} onPress={() => router.push('/unlock')}>
+              <Text style={[s.unlockLinkText, { color: t.textSub }]}>
+                Unlock unlimited access →
+              </Text>
+            </TouchableOpacity>
+          )}
 
-        <TouchableOpacity style={styles.translateButton} onPress={translate}>
-          <Text style={styles.translateButtonText}>Translate</Text>
-        </TouchableOpacity>
-
-        {loading && <ActivityIndicator size="large" color="#E63946" style={{ marginTop: 24 }} />}
-
-        {result !== '' && !loading && (
-          <TouchableOpacity
-            style={styles.resultBox}
-            onPress={() => {
-              Clipboard.setStringAsync(result);
-              Alert.alert('Copied', 'Translation copied to clipboard.');
-            }}
-          >
-            <Text style={styles.resultLabel}>{toLang.label} — tap to copy</Text>
-            <Text style={styles.resultText}>{result}</Text>
-          </TouchableOpacity>
-        )}
-
-      </ScrollView>
+        </ScrollView>
+      </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f' },
-  scroll: { padding: 20, gap: 16 },
-  header: { fontSize: 24, fontWeight: '700', color: '#fff', textAlign: 'center', marginBottom: 8 },
+const s = StyleSheet.create({
+  root: { flex: 1 },
+  scroll: { padding: 24, gap: 14, paddingBottom: 48 },
 
-  creditBar: {
-    backgroundColor: '#1e1e1e', borderRadius: 12, padding: 14, gap: 8,
-  },
-  creditBarHeader: {
-    flexDirection: 'row', justifyContent: 'space-between',
-  },
-  creditBarLabel: { color: '#999', fontSize: 13 },
-  creditBarCount: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  creditBarLow: { color: '#E63946' },
-  creditBarTrack: {
-    height: 6, backgroundColor: '#333', borderRadius: 3, overflow: 'hidden',
-  },
-  creditBarFill: {
-    height: 6, backgroundColor: '#4CAF50', borderRadius: 3,
-  },
-  creditBarFillLow: { backgroundColor: '#E63946' },
-  creditBarWarning: { color: '#E63946', fontSize: 12 },
+  headerRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
+  headerTitle: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  headerAccent: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
+  headerSub: { fontSize: 13, marginTop: -8, marginBottom: 4 },
 
-  unlockButton: {
-    backgroundColor: '#1e1e1e', borderRadius: 12,
-    padding: 14, alignItems: 'center',
-    borderWidth: 1, borderColor: '#E63946',
-  },
-  unlockButtonText: { color: '#E63946', fontSize: 14, fontWeight: '700' },
+  creditLine: { height: 2, borderRadius: 1, overflow: 'hidden' },
+  creditFill: { height: 2, borderRadius: 1 },
+  warningText: { fontSize: 12 },
 
-  langRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  langButton: {
-    flex: 1, backgroundColor: '#1e1e1e', borderRadius: 12,
-    padding: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+  langCard: {
+    flexDirection: 'row', alignItems: 'center',
+    borderRadius: 16, borderWidth: 1,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1, shadowRadius: 8,
+    elevation: 3,
   },
-  langButtonText: { color: '#fff', fontSize: 15, fontWeight: '600' },
-  langArrow: { color: '#888', fontSize: 12 },
-  swapButton: {
-    backgroundColor: '#E63946', borderRadius: 12,
-    width: 44, height: 44, justifyContent: 'center', alignItems: 'center',
+  langSide: { flex: 1, padding: 16, gap: 2 },
+  langRight: { alignItems: 'flex-end' },
+  langLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 1, textTransform: 'uppercase' },
+  langValue: { fontSize: 16, fontWeight: '600' },
+  langChevron: { fontSize: 11 },
+
+  swapZone: { paddingHorizontal: 4, alignItems: 'center', justifyContent: 'center' },
+  swapPill: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
   },
-  swapText: { color: '#fff', fontSize: 20 },
+  swapIcon: { color: '#fff', fontSize: 16 },
 
   picker: {
-    backgroundColor: '#1e1e1e', borderRadius: 12, padding: 8, gap: 4,
+    borderRadius: 12, borderWidth: 1,
+    overflow: 'hidden',
+    marginTop: -8,
   },
-  pickerItem: { padding: 12, borderRadius: 8 },
-  pickerItemActive: { backgroundColor: '#E63946' },
-  pickerItemText: { color: '#ccc', fontSize: 15 },
-  pickerItemTextActive: { color: '#fff', fontWeight: '700' },
+  pickerItem: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', padding: 14,
+  },
+  pickerText: { fontSize: 15 },
 
-  inputWrapper: { position: 'relative' },
+  inputCard: {
+    borderRadius: 16, borderWidth: 1,
+    padding: 16, gap: 8,
+    minHeight: 120,
+  },
   input: {
-    backgroundColor: '#1e1e1e', borderRadius: 12,
-    padding: 16, color: '#fff', fontSize: 17,
-    minHeight: 130, textAlignVertical: 'top',
+    fontSize: 17, lineHeight: 24,
+    minHeight: 80, textAlignVertical: 'top',
   },
-  charCount: {
-    position: 'absolute', bottom: 8, right: 12,
-    color: '#555', fontSize: 12,
-  },
+  charCount: { fontSize: 12, textAlign: 'right' },
 
-  translateButton: {
-    backgroundColor: '#E63946', borderRadius: 12,
-    padding: 16, alignItems: 'center',
+  btnRow: { alignItems: 'center' },
+  translateBtn: {
+    paddingVertical: 14, paddingHorizontal: 52,
+    borderRadius: 32, alignItems: 'center',
+    minWidth: 180,
   },
-  translateButtonText: { color: '#fff', fontSize: 17, fontWeight: '700' },
+  translateBtnText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 },
 
-  resultBox: {
-    backgroundColor: '#1a1a2e', borderRadius: 12,
-    padding: 16, gap: 8, borderLeftWidth: 3, borderLeftColor: '#E63946',
+  resultCard: {
+    borderRadius: 16, borderWidth: 1,
+    padding: 18, gap: 6,
   },
-  resultLabel: { color: '#E63946', fontSize: 13, fontWeight: '600', textTransform: 'uppercase' },
-  resultText: { color: '#fff', fontSize: 18, lineHeight: 28 },
+  resultLang: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  resultText: { fontSize: 20, lineHeight: 30, fontWeight: '500' },
+  resultCopy: { fontSize: 12, marginTop: 4 },
+
+  unlockLink: { alignItems: 'center', paddingVertical: 8 },
+  unlockLinkText: { fontSize: 14 },
 });
