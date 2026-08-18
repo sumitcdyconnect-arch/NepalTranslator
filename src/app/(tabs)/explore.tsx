@@ -5,6 +5,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -18,6 +19,30 @@ type Category = {
   name: string;
   icon: string;
   phrases: Phrase[];
+};
+
+const light = {
+  bg: '#FAFAF8',
+  card: '#FFFFFF',
+  cardAlt: '#F2F1EE',
+  text: '#1C1C1E',
+  textSub: '#8A8A8E',
+  primary: '#DC143C',
+  border: '#E5E4E0',
+  inputBg: '#F7F6F3',
+  shadow: '#00000012',
+};
+
+const dark = {
+  bg: '#111110',
+  card: '#1C1C1E',
+  cardAlt: '#2C2C2E',
+  text: '#F5F5F0',
+  textSub: '#8A8A8E',
+  primary: '#DC143C',
+  border: '#2C2C2E',
+  inputBg: '#1C1C1E',
+  shadow: '#00000040',
 };
 
 const CATEGORIES: Category[] = [
@@ -82,6 +107,9 @@ const CATEGORIES: Category[] = [
 ];
 
 export default function PhrasebookScreen() {
+  const scheme = useColorScheme();
+  const t = scheme === 'dark' ? dark : light;
+
   const [activeCategory, setActiveCategory] = useState(CATEGORIES[0].name);
 
   const currentCategory = CATEGORIES.find((c) => c.name === activeCategory)!;
@@ -92,8 +120,8 @@ export default function PhrasebookScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>📖 Phrasebook</Text>
+    <SafeAreaView style={[styles.container, { backgroundColor: t.bg }]}>
+      <Text style={[styles.header, { color: t.text }]}>📖 Phrasebook</Text>
 
       {/* Category Tabs */}
       <ScrollView
@@ -105,11 +133,22 @@ export default function PhrasebookScreen() {
         {CATEGORIES.map((cat) => (
           <TouchableOpacity
             key={cat.name}
-            style={[styles.tab, activeCategory === cat.name && styles.tabActive]}
+            style={[
+              styles.tab,
+              activeCategory === cat.name
+                ? { backgroundColor: t.primary }
+                : { backgroundColor: t.cardAlt },
+              { borderWidth: activeCategory === cat.name ? 0 : 1, borderColor: t.border },
+            ]}
             onPress={() => setActiveCategory(cat.name)}
           >
             <Text style={styles.tabIcon}>{cat.icon}</Text>
-            <Text style={[styles.tabText, activeCategory === cat.name && styles.tabTextActive]}>
+            <Text
+              style={[
+                styles.tabText,
+                { color: activeCategory === cat.name ? '#fff' : t.textSub },
+              ]}
+            >
               {cat.name}
             </Text>
           </TouchableOpacity>
@@ -121,11 +160,11 @@ export default function PhrasebookScreen() {
         {currentCategory.phrases.map((phrase, idx) => (
           <TouchableOpacity
             key={idx}
-            style={styles.phraseCard}
+            style={[styles.phraseCard, { backgroundColor: t.card, borderColor: t.border }]}
             onPress={() => copyPhrase(phrase.nepali)}
           >
-            <Text style={styles.englishText}>{phrase.english}</Text>
-            <Text style={styles.nepaliText}>{phrase.nepali}</Text>
+            <Text style={[styles.englishText, { color: t.textSub }]}>{phrase.english}</Text>
+            <Text style={[styles.nepaliText, { color: t.text }]}>{phrase.nepali}</Text>
           </TouchableOpacity>
         ))}
       </ScrollView>
@@ -134,29 +173,27 @@ export default function PhrasebookScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0f0f0f' },
+  container: { flex: 1 },
   header: {
-    fontSize: 24, fontWeight: '700', color: '#fff',
+    fontSize: 24, fontWeight: '700',
     textAlign: 'center', paddingTop: 16, paddingBottom: 12,
   },
   tabRow: { flexGrow: 0, paddingLeft: 16 },
   tabRowContent: { gap: 8, paddingRight: 16, paddingBottom: 12 },
   tab: {
-    backgroundColor: '#1e1e1e', borderRadius: 20,
+    borderRadius: 20,
     paddingVertical: 10, paddingHorizontal: 16,
     flexDirection: 'row', alignItems: 'center', gap: 6,
   },
-  tabActive: { backgroundColor: '#E63946' },
   tabIcon: { fontSize: 16 },
-  tabText: { color: '#ccc', fontSize: 13, fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tabText: { fontSize: 13, fontWeight: '600' },
 
   list: { flex: 1 },
   listContent: { padding: 16, gap: 10 },
   phraseCard: {
-    backgroundColor: '#1e1e1e', borderRadius: 12,
+    borderRadius: 12, borderWidth: 1,
     padding: 16, gap: 6,
   },
-  englishText: { color: '#999', fontSize: 14 },
-  nepaliText: { color: '#fff', fontSize: 18, fontWeight: '600' },
+  englishText: { fontSize: 14 },
+  nepaliText: { fontSize: 18, fontWeight: '600' },
 });
