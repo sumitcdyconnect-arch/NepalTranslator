@@ -39,3 +39,8 @@ export const resetCredits = async (): Promise<void> => {
   await AsyncStorage.removeItem(CREDITS_KEY);
   await AsyncStorage.removeItem(ACTIVATED_KEY);
 };
+
+export const debugReset = async (): Promise<void> => {
+  await AsyncStorage.removeItem('free_credits');
+  await AsyncStorage.removeItem('is_activated');
+};

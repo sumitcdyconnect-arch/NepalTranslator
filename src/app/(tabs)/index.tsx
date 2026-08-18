@@ -1,6 +1,7 @@
 import * as Clipboard from 'expo-clipboard';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
+import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
 import {
   Animated,
   Alert,
@@ -13,10 +14,11 @@ import {
   View,
   useColorScheme,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { initCredits, getCredits, useCredit, isActivated } from '@/utils/credits';
+import { initCredits, getCredits, useCredit, isActivated, debugReset } from '@/utils/credits';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -58,6 +60,7 @@ const dark = {
 export default function TranslatorScreen() {
   const scheme = useColorScheme();
   const t = scheme === 'dark' ? dark : light;
+  const { width: screenWidth } = Dimensions.get('window');
 
   const [fromLang, setFromLang] = useState(LANGUAGES[0]);
   const [toLang, setToLang] = useState(LANGUAGES[1]);
@@ -69,11 +72,37 @@ export default function TranslatorScreen() {
   const [credits, setCredits] = useState<number>(50);
   const [activated, setActivated] = useState(false);
 
-  const resultAnim = useRef(new Animated.Value(0)).current;
-  const resultOpacity = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
+  const islandHeight = useSharedValue(56);
+  const islandWidth = useSharedValue(180);
+  const islandRadius = useSharedValue(32);
+  const contentOpacity = useSharedValue(1);
+  const resultOpacity = useSharedValue(0);
+
+  const islandStyle = useAnimatedStyle(() => ({
+    height: islandHeight.value,
+    width: islandWidth.value,
+    borderRadius: islandRadius.value,
+  }));
+
+  const expandIsland = () => {
+    console.log('expanding island');
+    islandWidth.value = withSpring(screenWidth - 48, { damping: 30, stiffness: 400, mass: 1 });
+    islandHeight.value = withSpring(140, { damping: 30, stiffness: 400, mass: 1 });
+    islandRadius.value = withSpring(20, { damping: 30, stiffness: 400, mass: 1 });
+    contentOpacity.value = withTiming(0, { duration: 100 });
+    resultOpacity.value = withTiming(1, { duration: 200 });
+  };
+
+  const collapseIsland = () => {
+    resultOpacity.value = withTiming(0, { duration: 100 });
+    contentOpacity.value = withTiming(1, { duration: 150 });
+    islandWidth.value = withSpring(180, { damping: 30, stiffness: 400, mass: 1 });
+    islandHeight.value = withSpring(56, { damping: 30, stiffness: 400, mass: 1 });
+    islandRadius.value = withSpring(32, { damping: 30, stiffness: 400, mass: 1 });
+  };
 
   useEffect(() => {
+    debugReset();
     initCredits();
   }, []);
 
@@ -91,33 +120,6 @@ export default function TranslatorScreen() {
     }, [])
   );
 
-  const animateResult = () => {
-    resultAnim.setValue(40);
-    resultOpacity.setValue(0);
-    Animated.parallel([
-      Animated.spring(resultAnim, {
-        toValue: 0,
-        tension: 60,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.timing(resultOpacity, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const startProgress = () => {
-    progressAnim.setValue(0);
-    Animated.timing(progressAnim, {
-      toValue: 1,
-      duration: 2000,
-      useNativeDriver: false,
-    }).start();
-  };
-
   const swapLanguages = () => {
     setFromLang(toLang);
     setToLang(fromLang);
@@ -127,20 +129,20 @@ export default function TranslatorScreen() {
 
   const translate = async () => {
     Keyboard.dismiss();
+    expandIsland();
     if (!inputText.trim()) return;
 
     if (!activated) {
       const { allowed, remaining } = await useCredit();
       if (!allowed) {
         Alert.alert('No credits remaining', 'Purchase unlimited access to continue.');
+        collapseIsland();
         return;
       }
       setCredits(remaining);
     }
 
     setLoading(true);
-    startProgress();
-    animateResult();
     setResult('');
     try {
       const response = await fetch('https://nepaltranslatorapi.onrender.com/translate', {
@@ -151,14 +153,17 @@ export default function TranslatorScreen() {
       const data = await response.json();
       if (data.translation) {
         setResult(data.translation);
-        animateResult();
       } else {
         Alert.alert('Error', data.error || 'Translation failed.');
+        setResult('');
       }
     } catch {
       Alert.alert('Error', 'Cannot reach server. Check your connection.');
+      setResult('');
+      collapseIsland();
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const closePickers = () => {
@@ -168,6 +173,12 @@ export default function TranslatorScreen() {
 
   const isLow = credits <= 10;
   const isWarning = credits <= 20 && !activated;
+
+  const creditFillColor = credits > 30
+    ? '#2E7D32'   // green — plenty
+    : credits > 15
+    ? '#F59E0B'   // amber — moderate
+    : '#DC143C';  // red — low
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: t.bg }]}>
@@ -187,16 +198,21 @@ export default function TranslatorScreen() {
             {activated ? 'Unlimited access' : `${credits} of 50 free translations`}
           </Text>
 
-          {/* Credit hairline */}
+          {/* Credit bar */}
           {!activated && (
-            <View style={[s.creditLine, { backgroundColor: t.border }]}>
-              <View style={[
-                s.creditFill,
-                {
-                  width: `${(credits / 50) * 100}%` as any,
-                  backgroundColor: isLow ? t.primary : t.primary + '66',
-                },
-              ]} />
+            <View style={s.creditBarContainer}>
+              <View style={[s.creditBarTrack, { backgroundColor: t.border }]}>
+                <View style={[
+                  s.creditBarFill,
+                  {
+                    width: `${(credits / 50) * 100}%` as any,
+                    backgroundColor: creditFillColor,
+                  },
+                ]} />
+              </View>
+              <Text style={[s.creditBarCount, { color: creditFillColor }]}>
+                {credits}/50
+              </Text>
             </View>
           )}
 
@@ -281,49 +297,49 @@ export default function TranslatorScreen() {
               multiline
               value={inputText}
               onChangeText={text => text.length <= 500 && setInputText(text)}
+              onFocus={() => {
+                if (result) {
+                  collapseIsland();
+                  setResult('');
+                }
+              }}
             />
             <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
           </View>
 
-          {/* Translate button — centered pill */}
+          {/* Dynamic Island */}
           <View style={s.btnRow}>
-            <TouchableOpacity
-              style={[s.translateBtn, { backgroundColor: t.primary }]}
-              onPress={translate}
-              activeOpacity={0.85}
-            >
-              <Text style={s.translateBtnText}>Translate</Text>
-            </TouchableOpacity>
-          </View>
+            <Reanimated.View style={[s.island, { backgroundColor: '#DC143C' }, islandStyle]}>
+              {/* Compact — only shown when no result and not loading */}
+              {!loading && !result && (
+                <TouchableOpacity style={s.islandCompactInner} onPress={translate} activeOpacity={0.85}>
+                  <Text style={[s.islandBtnText, { color: '#fff' }]}>Translate</Text>
+                </TouchableOpacity>
+              )}
 
-          {/* Result */}
-          {(loading || result !== '') && (
-            <Animated.View style={{ transform: [{ translateY: resultAnim }], opacity: resultOpacity }}>
-              <View style={[s.resultCard, { backgroundColor: t.card, borderColor: t.border }]}>
-                {/* Animated left border */}
-                <Animated.View style={{
-                  position: 'absolute',
-                  left: 0, top: 0, bottom: 0,
-                  width: 3,
-                  borderRadius: 3,
-                  backgroundColor: t.primary,
-                  transform: [{
-                    scaleY: loading ? progressAnim : 1
-                  }],
-                  transformOrigin: 'top',
-                }} />
+              {/* Expanded — loading or result */}
+              <Reanimated.View style={[s.islandExpanded, { opacity: resultOpacity }]} pointerEvents={result || loading ? 'auto' : 'none'}>
                 {loading ? (
-                  <Text style={[s.resultLang, { color: t.textSub }]}>TRANSLATING...</Text>
+                  <View style={s.islandExpandedInner}>
+                    <Text style={[s.islandLang, { color: 'rgba(255,255,255,0.7)' }]}>TRANSLATING...</Text>
+                  </View>
                 ) : (
-                  <TouchableOpacity onPress={() => { Clipboard.setStringAsync(result); Alert.alert('Copied', 'Translation copied to clipboard.'); }}>
-                    <Text style={[s.resultLang, { color: t.primary }]}>{toLang.label.toUpperCase()}</Text>
-                    <Text style={[s.resultText, { color: t.text }]}>{result}</Text>
-                    <Text style={[s.resultCopy, { color: t.textSub }]}>Tap to copy</Text>
+                  <TouchableOpacity
+                    style={s.islandExpandedInner}
+                    onPress={() => {
+                      Clipboard.setStringAsync(result);
+                      collapseIsland();
+                      setResult('');
+                    }}
+                  >
+                    <Text style={[s.islandLang, { color: 'rgba(255,255,255,0.7)' }]}>{toLang.label.toUpperCase()}</Text>
+                    <Text style={[s.islandResult, { color: '#fff' }]}>{result}</Text>
+                    <Text style={[s.islandCopy, { color: 'rgba(255,255,255,0.6)' }]}>Tap to copy & close</Text>
                   </TouchableOpacity>
                 )}
-              </View>
-            </Animated.View>
-          )}
+              </Reanimated.View>
+            </Reanimated.View>
+          </View>
 
           {/* Unlock link */}
           {!activated && (
@@ -349,8 +365,10 @@ const s = StyleSheet.create({
   headerAccent: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
   headerSub: { fontSize: 13, marginTop: -8, marginBottom: 4 },
 
-  creditLine: { height: 2, borderRadius: 1, overflow: 'hidden' },
-  creditFill: { height: 2, borderRadius: 1 },
+  creditBarContainer: { gap: 4 },
+  creditBarTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  creditBarFill: { height: 6, borderRadius: 3 },
+  creditBarCount: { fontSize: 11, fontWeight: '600', textAlign: 'right' },
   warningText: { fontSize: 12 },
 
   langCard: {
@@ -397,20 +415,34 @@ const s = StyleSheet.create({
   charCount: { fontSize: 12, textAlign: 'right' },
 
   btnRow: { alignItems: 'center' },
-  translateBtn: {
-    paddingVertical: 14, paddingHorizontal: 52,
-    borderRadius: 32, alignItems: 'center',
-    minWidth: 180,
+  island: {
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  translateBtnText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: 0.2 },
-
-  resultCard: {
-    borderRadius: 16, borderWidth: 1,
-    padding: 18, gap: 6,
+  islandCompact: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  resultLang: { fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
-  resultText: { fontSize: 20, lineHeight: 30, fontWeight: '500' },
-  resultCopy: { fontSize: 12, marginTop: 4 },
+  islandCompactInner: {
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    alignItems: 'center',
+  },
+  islandBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  islandExpanded: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+  },
+  islandExpandedInner: { padding: 20, gap: 6 },
+  islandLang: { color: '#DC143C', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
+  islandResult: { color: '#fff', fontSize: 20, lineHeight: 28, fontWeight: '500' },
+  islandCopy: { color: '#888', fontSize: 12, marginTop: 4 },
 
   unlockLink: { alignItems: 'center', paddingVertical: 8 },
   unlockLinkText: { fontSize: 14 },
