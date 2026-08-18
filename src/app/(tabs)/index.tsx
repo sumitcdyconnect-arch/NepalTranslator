@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
@@ -72,6 +73,7 @@ export default function TranslatorScreen() {
   const [showToPicker, setShowToPicker] = useState(false);
   const [credits, setCredits] = useState<number>(50);
   const [activated, setActivated] = useState(false);
+  const [listening, setListening] = useState(false);
 
   const islandHeight = useSharedValue(56);
   const islandWidth = useSharedValue(180);
@@ -121,11 +123,32 @@ export default function TranslatorScreen() {
     }, [])
   );
 
+  useSpeechRecognitionEvent('start', () => setListening(true));
+  useSpeechRecognitionEvent('end', () => setListening(false));
+  useSpeechRecognitionEvent('result', (event) => {
+    if (event.results[0]) {
+      setInputText(event.results[0].transcript);
+    }
+  });
+
   const swapLanguages = () => {
     setFromLang(toLang);
     setToLang(fromLang);
     setInputText(result);
     setResult(inputText);
+  };
+
+  const startVoice = async () => {
+    const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+    if (!granted) {
+      Alert.alert('Permission denied', 'Microphone access is needed for voice input.');
+      return;
+    }
+    ExpoSpeechRecognitionModule.start({ lang: fromLang.code, interimResults: true });
+  };
+
+  const stopVoice = () => {
+    ExpoSpeechRecognitionModule.stop();
   };
 
   const translate = async () => {
@@ -300,6 +323,12 @@ export default function TranslatorScreen() {
                 }
               }}
             />
+            <TouchableOpacity
+              style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
+              onPress={listening ? stopVoice : startVoice}
+            >
+              <Text style={{ fontSize: 18 }}>{listening ? '⏹' : '🎤'}</Text>
+            </TouchableOpacity>
             <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
           </View>
 
@@ -415,6 +444,16 @@ const s = StyleSheet.create({
     minHeight: 80, textAlignVertical: 'top',
   },
   charCount: { fontSize: 12, textAlign: 'right' },
+  micBtn: {
+    position: 'absolute',
+    bottom: 10,
+    left: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
 
   btnRow: { alignItems: 'center' },
   island: {
