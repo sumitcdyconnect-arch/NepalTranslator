@@ -127,7 +127,7 @@ export default function TranslatorScreen() {
   useSpeechRecognitionEvent('end', () => setListening(false));
   useSpeechRecognitionEvent('result', (event) => {
     if (event.results[0]) {
-      setInputText(event.results[0].transcript);
+      setInputText(event.results[0].transcript.trim());
     }
   });
 
@@ -144,7 +144,7 @@ export default function TranslatorScreen() {
       Alert.alert('Permission denied', 'Microphone access is needed for voice input.');
       return;
     }
-    ExpoSpeechRecognitionModule.start({ lang: fromLang.code, interimResults: true });
+    ExpoSpeechRecognitionModule.start({ lang: fromLang.code, interimResults: false });
   };
 
   const stopVoice = () => {
@@ -152,9 +152,9 @@ export default function TranslatorScreen() {
   };
 
   const translate = async () => {
+    if (!inputText.trim()) return; // block if empty — MUST be first line
     Keyboard.dismiss();
     expandIsland();
-    if (!inputText.trim()) return;
 
     if (!activated) {
       const { allowed, remaining } = await useCredit();
@@ -324,10 +324,11 @@ export default function TranslatorScreen() {
               }}
             />
             <TouchableOpacity
-              style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
               onPress={listening ? stopVoice : startVoice}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
             >
-              <Text style={{ fontSize: 18 }}>{listening ? '⏹' : '🎤'}</Text>
+              <Text style={{ fontSize: 22 }}>{listening ? '⏹' : '🎤'}</Text>
             </TouchableOpacity>
             <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
           </View>
@@ -446,11 +447,11 @@ const s = StyleSheet.create({
   charCount: { fontSize: 12, textAlign: 'right' },
   micBtn: {
     position: 'absolute',
-    bottom: 10,
-    left: 12,
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    bottom: 8,
+    left: 8,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
   },
