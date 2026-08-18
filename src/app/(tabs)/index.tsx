@@ -60,7 +60,8 @@ const dark = {
 export default function TranslatorScreen() {
   const scheme = useColorScheme();
   const t = scheme === 'dark' ? dark : light;
-  const { width: screenWidth } = Dimensions.get('window');
+  const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+  const expandedHeight = screenHeight * 0.18;
 
   const [fromLang, setFromLang] = useState(LANGUAGES[0]);
   const [toLang, setToLang] = useState(LANGUAGES[1]);
@@ -87,7 +88,7 @@ export default function TranslatorScreen() {
   const expandIsland = () => {
     console.log('expanding island');
     islandWidth.value = withSpring(screenWidth - 48, { damping: 30, stiffness: 400, mass: 1 });
-    islandHeight.value = withSpring(140, { damping: 30, stiffness: 400, mass: 1 });
+    islandHeight.value = withSpring(expandedHeight, { damping: 30, stiffness: 400, mass: 1 });
     islandRadius.value = withSpring(20, { damping: 30, stiffness: 400, mass: 1 });
     contentOpacity.value = withTiming(0, { duration: 100 });
     resultOpacity.value = withTiming(1, { duration: 200 });
@@ -200,19 +201,14 @@ export default function TranslatorScreen() {
 
           {/* Credit bar */}
           {!activated && (
-            <View style={s.creditBarContainer}>
-              <View style={[s.creditBarTrack, { backgroundColor: t.border }]}>
-                <View style={[
-                  s.creditBarFill,
-                  {
-                    width: `${(credits / 50) * 100}%` as any,
-                    backgroundColor: creditFillColor,
-                  },
-                ]} />
+            <View style={s.creditBar}>
+              <View style={s.creditBarHeader}>
+                <Text style={[s.creditBarLabel, { color: t.textSub }]}>Free translations</Text>
+                <Text style={[s.creditBarCount, { color: creditFillColor }]}>{credits}/50</Text>
               </View>
-              <Text style={[s.creditBarCount, { color: creditFillColor }]}>
-                {credits}/50
-              </Text>
+              <View style={[s.creditBarTrack, { backgroundColor: t.border }]}>
+                <View style={[s.creditBarFill, { width: `${(credits / 50) * 100}%` as any, backgroundColor: creditFillColor }]} />
+              </View>
             </View>
           )}
 
@@ -312,7 +308,11 @@ export default function TranslatorScreen() {
             <Reanimated.View style={[s.island, { backgroundColor: '#DC143C' }, islandStyle]}>
               {/* Compact — only shown when no result and not loading */}
               {!loading && !result && (
-                <TouchableOpacity style={s.islandCompactInner} onPress={translate} activeOpacity={0.85}>
+                <TouchableOpacity
+                  style={[s.islandCompactInner, { width: '100%', alignItems: 'center' }]}
+                  onPress={translate}
+                  activeOpacity={0.85}
+                >
                   <Text style={[s.islandBtnText, { color: '#fff' }]}>Translate</Text>
                 </TouchableOpacity>
               )}
@@ -365,10 +365,12 @@ const s = StyleSheet.create({
   headerAccent: { fontSize: 28, fontWeight: '700', letterSpacing: -0.5 },
   headerSub: { fontSize: 13, marginTop: -8, marginBottom: 4 },
 
-  creditBarContainer: { gap: 4 },
+  creditBar: { gap: 6 },
+  creditBarHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  creditBarLabel: { fontSize: 11, fontWeight: '600' },
   creditBarTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   creditBarFill: { height: 6, borderRadius: 3 },
-  creditBarCount: { fontSize: 11, fontWeight: '600', textAlign: 'right' },
+  creditBarCount: { fontSize: 11, fontWeight: '600' },
   warningText: { fontSize: 12 },
 
   langCard: {
@@ -419,6 +421,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
+    minHeight: 56,
   },
   islandCompact: {
     position: 'absolute',
@@ -428,9 +431,12 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   islandCompactInner: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
     paddingVertical: 16,
     paddingHorizontal: 32,
-    alignItems: 'center',
   },
   islandBtnText: { color: '#fff', fontSize: 17, fontWeight: '600' },
   islandExpanded: {
@@ -439,7 +445,7 @@ const s = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
   },
-  islandExpandedInner: { padding: 20, gap: 6 },
+  islandExpandedInner: { padding: 16, gap: 6 },
   islandLang: { color: '#DC143C', fontSize: 10, fontWeight: '700', letterSpacing: 1.5 },
   islandResult: { color: '#fff', fontSize: 20, lineHeight: 28, fontWeight: '500' },
   islandCopy: { color: '#888', fontSize: 12, marginTop: 4 },
