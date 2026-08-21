@@ -17,6 +17,7 @@ import { useFocusEffect, router } from 'expo-router';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
 import {
   Animated,
+  ActivityIndicator,
   Alert,
   Keyboard,
   StyleSheet,
@@ -88,6 +89,9 @@ export default function TranslatorScreen() {
   const [activated, setActivated] = useState(false);
   const [listening, setListening] = useState(false);
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
+const [speaking, setSpeaking] = useState(false);
+
+const [ttsReady, setTtsReady] = useState(false);
 
   const islandHeight = useSharedValue(56);
   const islandWidth = useSharedValue(180);
@@ -121,8 +125,13 @@ export default function TranslatorScreen() {
   useEffect(() => {
     debugReset();
     initCredits();
-    // Pre-warm TTS engine
-    Speech.speak('', { language: 'ne' });
+    // Pre-warm TTS engine so the first speak is instantaneous
+    Speech.speak(' ', {
+      language: 'ne',
+      onStart: () => setTtsReady(true),
+      onDone: () => setTtsReady(true),
+      onError: () => setTtsReady(true), // show ready even on error
+    });
   }, []);
 
   useFocusEffect(
@@ -393,8 +402,14 @@ export default function TranslatorScreen() {
                     <Text style={[s.islandResult, { color: '#fff' }]}>{result}</Text>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
                       <Text style={[s.islandCopy, { color: 'rgba(255,255,255,0.6)' }]}>Tap to copy & close</Text>
-                      <TouchableOpacity onPress={speakResult}>
-                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>🔊 Hear</Text>
+                      <TouchableOpacity onPress={speakResult} style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                        {!ttsReady || speaking
+                          ? <ActivityIndicator size='small' color='rgba(255,255,255,0.7)' />
+                          : <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>🔊</Text>
+                        }
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>
+                          {speaking ? 'Speaking...' : 'Hear'}
+                        </Text>
                       </TouchableOpacity>
                     </View>
                   </TouchableOpacity>
