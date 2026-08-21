@@ -1,5 +1,15 @@
 import * as Clipboard from 'expo-clipboard';
-import { ExpoSpeechRecognitionModule, useSpeechRecognitionEvent } from 'expo-speech-recognition';
+
+let ExpoSpeechRecognitionModule: any = null;
+let useSpeechRecognitionEvent: any = () => {};
+try {
+  const speechModule = require('expo-speech-recognition');
+  ExpoSpeechRecognitionModule = speechModule.ExpoSpeechRecognitionModule;
+  useSpeechRecognitionEvent = speechModule.useSpeechRecognitionEvent;
+} catch (e) {
+  // Not available in Expo Go
+}
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useFocusEffect, router } from 'expo-router';
 import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
@@ -19,6 +29,7 @@ import {
 } from 'react-native';
 import { ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { initCredits, getCredits, useCredit, isActivated, debugReset } from '@/utils/credits';
 
 const LANGUAGES = [
@@ -142,6 +153,10 @@ export default function TranslatorScreen() {
   };
 
   const startVoice = async () => {
+    if (!ExpoSpeechRecognitionModule) {
+      Alert.alert('Not available', 'Voice input requires the full app build.');
+      return;
+    }
     const { granted } = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
     if (!granted) {
       Alert.alert('Permission denied', 'Microphone access is needed for voice input.');
@@ -209,6 +224,7 @@ export default function TranslatorScreen() {
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: t.bg }]}>
+      <StatusBar style="dark" backgroundColor={t.bg} />
       <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); closePickers(); }}>
         <ScrollView
           contentContainerStyle={s.scroll}
@@ -310,20 +326,18 @@ export default function TranslatorScreen() {
             </View>
           )}
 
-          {/* Input row with mic */}
-          <View style={s.inputRow}>
-            <View style={[s.inputCard, { backgroundColor: t.inputBg, borderColor: t.border, flex: 1 }]}>
-              <TextInput
-                style={[s.input, { color: t.text }]}
-                placeholder={`Type in ${fromLang.label}...`}
-                placeholderTextColor={t.textSub}
-                multiline
-                value={inputText}
-                onChangeText={text => text.length <= 500 && setInputText(text)}
-                onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
-              />
-              <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
-            </View>
+          {/* Input card with mic */}
+          <View style={[s.inputCard, { backgroundColor: t.inputBg, borderColor: t.border }]}>
+            <TextInput
+              style={[s.input, { color: t.text }]}
+              placeholder={`Type in ${fromLang.label}...`}
+              placeholderTextColor={t.textSub}
+              multiline
+              value={inputText}
+              onChangeText={text => text.length <= 500 && setInputText(text)}
+              onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
+            />
+            <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
 
             <TouchableOpacity
               onPress={listening ? stopVoice : startVoice}
@@ -440,19 +454,20 @@ const s = StyleSheet.create({
     borderRadius: 16, borderWidth: 1,
     padding: 16, gap: 8,
     minHeight: 120,
+    position: 'relative',
   },
   input: {
     fontSize: 17, lineHeight: 24,
     minHeight: 80, textAlignVertical: 'top',
   },
-  charCount: { fontSize: 12, textAlign: 'right' },
+  charCount: { position: 'absolute', bottom: 12, left: 12, fontSize: 12 },
   micBtn: {
     position: 'absolute',
-    bottom: 8,
-    left: 8,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    bottom: 10,
+    right: 10,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -493,17 +508,4 @@ const s = StyleSheet.create({
 
   unlockLink: { alignItems: 'center', paddingVertical: 8 },
   unlockLinkText: { fontSize: 14 },
-  inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-  },
-  micBtn: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 2,
-  },
 });

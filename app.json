@@ -26,8 +26,8 @@
       "favicon": "./assets/images/favicon.png"
     },
     "androidStatusBar": {
-      "backgroundColor": "#F5F5F0",
-      "barStyle": "dark-content"
+      "barStyle": "dark-content",
+      "translucent": false
     },
     "plugins": [
       "expo-router",
@@ -41,7 +41,8 @@
           }
         }
       ],
-      "expo-speech-recognition"
+      "expo-speech-recognition",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true,
