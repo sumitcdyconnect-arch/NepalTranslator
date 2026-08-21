@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Speech from 'expo-speech';
 
 let ExpoSpeechRecognitionModule: any = null;
@@ -362,7 +363,7 @@ export default function TranslatorScreen() {
               style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
               activeOpacity={0.7}
             >
-              <Text style={{ fontSize: 22 }}>{listening ? '⏹' : '🎤'}</Text>
+              <MaterialCommunityIcons name={listening ? 'stop-circle' : 'microphone-variant'} size={22} color={listening ? '#fff' : t.textSub} />
             </TouchableOpacity>
           </View>
 
