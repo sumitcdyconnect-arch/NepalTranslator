@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import * as Speech from 'expo-speech';
 
 let ExpoSpeechRecognitionModule: any = null;
 let useSpeechRecognitionEvent: any = () => {};
@@ -85,6 +86,7 @@ export default function TranslatorScreen() {
   const [credits, setCredits] = useState<number>(50);
   const [activated, setActivated] = useState(false);
   const [listening, setListening] = useState(false);
+  const [wasVoiceInput, setWasVoiceInput] = useState(false);
 
   const islandHeight = useSharedValue(56);
   const islandWidth = useSharedValue(180);
@@ -118,6 +120,8 @@ export default function TranslatorScreen() {
   useEffect(() => {
     debugReset();
     initCredits();
+    // Pre-warm TTS engine
+    Speech.speak('', { language: 'ne' });
   }, []);
 
   useFocusEffect(
@@ -142,6 +146,7 @@ export default function TranslatorScreen() {
       setInputText(transcript);
       setResult(''); // clear any previous result
       collapseIsland(); // reset island to pill state
+      setWasVoiceInput(true);
     }
   });
 
@@ -195,6 +200,13 @@ export default function TranslatorScreen() {
       const data = await response.json();
       if (data.translation) {
         setResult(data.translation);
+        if (wasVoiceInput) {
+    setTimeout(() => {
+      Speech.stop();
+      Speech.speak(data.translation, { language: toLang.code, rate: 0.9 });
+    }, 600);
+    setWasVoiceInput(false);
+  }
       } else {
         Alert.alert('Error', data.error || 'Translation failed.');
         setResult('');
@@ -211,6 +223,12 @@ export default function TranslatorScreen() {
   const closePickers = () => {
     setShowFromPicker(false);
     setShowToPicker(false);
+  };
+
+  const speakResult = () => {
+    if (!result) return;
+    Speech.stop();
+    Speech.speak(result, { language: toLang.code, rate: 0.9 });
   };
 
   const isLow = credits <= 10;
@@ -334,7 +352,7 @@ export default function TranslatorScreen() {
               placeholderTextColor={t.textSub}
               multiline
               value={inputText}
-              onChangeText={text => text.length <= 500 && setInputText(text)}
+              onChangeText={text => { text.length <= 500 && setInputText(text); setWasVoiceInput(false); }}
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
@@ -368,20 +386,18 @@ export default function TranslatorScreen() {
                   <View style={s.islandExpandedInner}>
                     <Text style={[s.islandLang, { color: 'rgba(255,255,255,0.7)' }]}>TRANSLATING...</Text>
                   </View>
-                ) : (
-                  <TouchableOpacity
-                    style={s.islandExpandedInner}
-                    onPress={() => {
-                      Clipboard.setStringAsync(result);
-                      collapseIsland();
-                      setResult('');
-                    }}
-                  >
+                ) : result ? (
+                  <TouchableOpacity style={s.islandExpandedInner} onPress={() => { Clipboard.setStringAsync(result); collapseIsland(); setResult(''); }}>
                     <Text style={[s.islandLang, { color: 'rgba(255,255,255,0.7)' }]}>{toLang.label.toUpperCase()}</Text>
                     <Text style={[s.islandResult, { color: '#fff' }]}>{result}</Text>
-                    <Text style={[s.islandCopy, { color: 'rgba(255,255,255,0.6)' }]}>Tap to copy & close</Text>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+                      <Text style={[s.islandCopy, { color: 'rgba(255,255,255,0.6)' }]}>Tap to copy & close</Text>
+                      <TouchableOpacity onPress={speakResult}>
+                        <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13 }}>🔊 Hear</Text>
+                      </TouchableOpacity>
+                    </View>
                   </TouchableOpacity>
-                )}
+                ) : null}
               </Reanimated.View>
             </Reanimated.View>
           </View>
