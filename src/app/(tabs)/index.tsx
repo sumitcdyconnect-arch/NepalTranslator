@@ -127,7 +127,10 @@ export default function TranslatorScreen() {
   useSpeechRecognitionEvent('end', () => setListening(false));
   useSpeechRecognitionEvent('result', (event) => {
     if (event.results[0]) {
-      setInputText(event.results[0].transcript.trim());
+      const transcript = event.results[0].transcript.trim();
+      setInputText(transcript);
+      setResult(''); // clear any previous result
+      collapseIsland(); // reset island to pill state
     }
   });
 
@@ -307,30 +310,28 @@ export default function TranslatorScreen() {
             </View>
           )}
 
-          {/* Input */}
-          <View style={[s.inputCard, { backgroundColor: t.inputBg, borderColor: t.border }]}>
-            <TextInput
-              style={[s.input, { color: t.text }]}
-              placeholder={`Type in ${fromLang.label}...`}
-              placeholderTextColor={t.textSub}
-              multiline
-              value={inputText}
-              onChangeText={text => text.length <= 500 && setInputText(text)}
-              onFocus={() => {
-                if (result) {
-                  collapseIsland();
-                  setResult('');
-                }
-              }}
-            />
+          {/* Input row with mic */}
+          <View style={s.inputRow}>
+            <View style={[s.inputCard, { backgroundColor: t.inputBg, borderColor: t.border, flex: 1 }]}>
+              <TextInput
+                style={[s.input, { color: t.text }]}
+                placeholder={`Type in ${fromLang.label}...`}
+                placeholderTextColor={t.textSub}
+                multiline
+                value={inputText}
+                onChangeText={text => text.length <= 500 && setInputText(text)}
+                onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
+              />
+              <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
+            </View>
+
             <TouchableOpacity
               onPress={listening ? stopVoice : startVoice}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
+              activeOpacity={0.7}
             >
               <Text style={{ fontSize: 22 }}>{listening ? '⏹' : '🎤'}</Text>
             </TouchableOpacity>
-            <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
           </View>
 
           {/* Dynamic Island */}
@@ -492,4 +493,17 @@ const s = StyleSheet.create({
 
   unlockLink: { alignItems: 'center', paddingVertical: 8 },
   unlockLinkText: { fontSize: 14 },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 10,
+  },
+  micBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
 });
