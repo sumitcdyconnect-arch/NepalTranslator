@@ -390,6 +390,7 @@ const [ttsReady, setTtsReady] = useState(false);
                 <Animated.View style={[
                   s.modeIndicator,
                   { backgroundColor: t.primary + '18' },
+                  { borderWidth: 1, borderColor: t.primary },
                   { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 82] }) }] }
                 ]} />
                 <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('quick')}>
