@@ -283,22 +283,7 @@ const [ttsReady, setTtsReady] = useState(false);
             </View>
           )}
 
-          {/* Mode Toggle */}
-          <View style={s.modeRow}>
-            <TouchableOpacity
-              style={[s.modePill, mode === 'quick' && { backgroundColor: t.primary }]}
-              onPress={() => setMode('quick')}
-            >
-              <Text style={[s.modePillText, { color: mode === 'quick' ? '#fff' : t.textSub }]}>⚡ Quick</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[s.modePill, mode === 'precise' && { backgroundColor: t.primary }]}
-              onPress={() => setMode('precise')}
-            >
-              <Text style={[s.modePillText, { color: mode === 'precise' ? '#fff' : t.textSub }]}>🎯 Precise</Text>
-            </TouchableOpacity>
-          </View>
-
+          
           {/* Warning */}
           {isWarning && (
             <Text style={[s.warningText, { color: t.primary }]}>
@@ -382,15 +367,32 @@ const [ttsReady, setTtsReady] = useState(false);
               onChangeText={text => { text.length <= 500 && setInputText(text); setWasVoiceInput(false); }}
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
-            <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
-
-            <TouchableOpacity
-              onPress={listening ? stopVoice : startVoice}
-              style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
-              activeOpacity={0.7}
-            >
-              <MaterialCommunityIcons name={listening ? 'stop-circle' : 'microphone-variant'} size={22} color={listening ? '#fff' : t.textSub} />
-            </TouchableOpacity>
+            <View style={s.inputBottom}>
+              <View style={s.modeRow}>
+                <TouchableOpacity
+                  style={[s.modePill, mode === 'quick' && { backgroundColor: t.primary }]}
+                  onPress={() => setMode('quick')}
+                >
+                  <Text style={[s.modePillText, { color: mode === 'quick' ? '#fff' : t.textSub }]}>⚡ Quick</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.modePill, mode === 'precise' && { backgroundColor: t.primary }]}
+                  onPress={() => setMode('precise')}
+                >
+                  <Text style={[s.modePillText, { color: mode === 'precise' ? '#fff' : t.textSub }]}>🎯 Precise</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={[s.charCount, { color: t.textSub }]}>{inputText.length}/500</Text>
+                <TouchableOpacity
+                  onPress={listening ? stopVoice : startVoice}
+                  style={[s.micBtn, { backgroundColor: listening ? t.primary : t.cardAlt }]}
+                  activeOpacity={0.7}
+                >
+                  <MaterialCommunityIcons name={listening ? 'stop-circle' : 'microphone-variant'} size={22} color={listening ? '#fff' : t.textSub} />
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Dynamic Island */}
@@ -558,10 +560,21 @@ const s = StyleSheet.create({
   unlockLink: { alignItems: 'center', paddingVertical: 8 },
   unlockLinkText: { fontSize: 14 },
 
-  modeRow: { flexDirection: 'row', gap: 8 },
-  modePill: {
-    paddingVertical: 6, paddingHorizontal: 16,
-    borderRadius: 20,
+  inputBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
   },
-  modePillText: { fontSize: 13, fontWeight: '600' },
+  modeRow: { flexDirection: 'row', gap: 6 },
+  modePill: {
+    paddingVertical: 4, paddingHorizontal: 10,
+    borderRadius: 12, backgroundColor: t.cardAlt,
+  },
+  modePillText: { fontSize: 11, fontWeight: '600' },
+  charCount: { fontSize: 12 },
+  micBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    justifyContent: 'center', alignItems: 'center',
+  },
 });
