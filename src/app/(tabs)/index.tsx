@@ -90,6 +90,7 @@ export default function TranslatorScreen() {
   const [listening, setListening] = useState(false);
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
 const [speaking, setSpeaking] = useState(false);
+const [mode, setMode] = useState<'quick' | 'precise'>('precise');
 
 const [ttsReady, setTtsReady] = useState(false);
 
@@ -205,7 +206,7 @@ const [ttsReady, setTtsReady] = useState(false);
       const response = await fetch('https://nepaltranslatorapi.onrender.com/translate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: inputText, from: fromLang.code, to: toLang.code }),
+        body: JSON.stringify({ text: inputText, from: fromLang.code, to: toLang.code, mode }),
       });
       const data = await response.json();
       if (data.translation) {
@@ -281,6 +282,22 @@ const [ttsReady, setTtsReady] = useState(false);
               </View>
             </View>
           )}
+
+          {/* Mode Toggle */}
+          <View style={s.modeRow}>
+            <TouchableOpacity
+              style={[s.modePill, mode === 'quick' && { backgroundColor: t.primary }]}
+              onPress={() => setMode('quick')}
+            >
+              <Text style={[s.modePillText, { color: mode === 'quick' ? '#fff' : t.textSub }]}>⚡ Quick</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.modePill, mode === 'precise' && { backgroundColor: t.primary }]}
+              onPress={() => setMode('precise')}
+            >
+              <Text style={[s.modePillText, { color: mode === 'precise' ? '#fff' : t.textSub }]}>🎯 Precise</Text>
+            </TouchableOpacity>
+          </View>
 
           {/* Warning */}
           {isWarning && (
@@ -540,4 +557,11 @@ const s = StyleSheet.create({
 
   unlockLink: { alignItems: 'center', paddingVertical: 8 },
   unlockLinkText: { fontSize: 14 },
+
+  modeRow: { flexDirection: 'row', gap: 8 },
+  modePill: {
+    paddingVertical: 6, paddingHorizontal: 16,
+    borderRadius: 20,
+  },
+  modePillText: { fontSize: 13, fontWeight: '600' },
 });
