@@ -90,7 +90,25 @@ export default function TranslatorScreen() {
   const [listening, setListening] = useState(false);
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
 const [speaking, setSpeaking] = useState(false);
-const [mode, setMode] = useState<'quick' | 'precise'>('precise');
+const [mode, setMode] = useState<'quick' | 'precise'>('quick');
+const modeAnim = useRef(new Animated.Value(0)).current;
+const iconBounce = useRef(new Animated.Value(1)).current;
+const switchMode = (newMode: 'quick' | 'precise') => {
+  setMode(newMode);
+  Animated.spring(modeAnim, {
+    toValue: newMode === 'quick' ? 0 : 1,
+    useNativeDriver: true,
+    tension: 300,
+    friction: 20,
+  }).start();
+  iconBounce.setValue(0.7);
+  Animated.spring(iconBounce, {
+    toValue: 1,
+    useNativeDriver: true,
+    tension: 400,
+    friction: 8,
+  }).start();
+};
 
 const [ttsReady, setTtsReady] = useState(false);
 
@@ -368,18 +386,23 @@ const [ttsReady, setTtsReady] = useState(false);
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <View style={s.inputBottom}>
-              <View style={s.modeRow}>
-                <TouchableOpacity
-                  style={[s.modePill, mode === 'quick' && { backgroundColor: t.primary }]}
-                  onPress={() => setMode('quick')}
-                >
-                  <Text style={[s.modePillText, { color: mode === 'quick' ? '#fff' : t.textSub }]}>⚡ Quick</Text>
+              <View style={[s.modeContainer, { backgroundColor: t.cardAlt }]}>
+                <Animated.View style={[
+                  s.modeIndicator,
+                  { backgroundColor: t.primary + '18' },
+                  { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 82] }) }] }
+                ]} />
+                <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('quick')}>
+                  <Animated.View style={{ transform: [{ scale: mode === 'quick' ? iconBounce : 1 }] }}>
+                    <MaterialCommunityIcons name='lightning-bolt' size={12} color={mode === 'quick' ? t.primary : t.textSub} />
+                  </Animated.View>
+                  <Text style={[s.modeBtnText, { color: mode === 'quick' ? t.primary : t.textSub }]}>Quick</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[s.modePill, mode === 'precise' && { backgroundColor: t.primary }]}
-                  onPress={() => setMode('precise')}
-                >
-                  <Text style={[s.modePillText, { color: mode === 'precise' ? '#fff' : t.textSub }]}>🎯 Precise</Text>
+                <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('precise')}>
+                  <Animated.View style={{ transform: [{ scale: mode === 'precise' ? iconBounce : 1 }] }}>
+                    <MaterialCommunityIcons name='target' size={12} color={mode === 'precise' ? t.primary : t.textSub} />
+                  </Animated.View>
+                  <Text style={[s.modeBtnText, { color: mode === 'precise' ? t.primary : t.textSub }]}>Precise</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -566,12 +589,30 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 8,
   },
-  modeRow: { flexDirection: 'row', gap: 6 },
-  modePill: {
-    paddingVertical: 4, paddingHorizontal: 10,
-    borderRadius: 12, backgroundColor: t.cardAlt,
+  modeContainer: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    padding: 2,
+    position: 'relative',
+    alignSelf: 'flex-start',
   },
-  modePillText: { fontSize: 11, fontWeight: '600' },
+  modeIndicator: {
+    position: 'absolute',
+    top: 2, bottom: 2,
+    width: 80,
+    borderRadius: 12,
+  },
+  modeBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    width: 80,
+    justifyContent: 'center',
+    zIndex: 1,
+  },
+  modeBtnText: { fontSize: 11, fontWeight: '600' },
   charCount: { fontSize: 12 },
   micBtn: {
     width: 36, height: 36, borderRadius: 18,
