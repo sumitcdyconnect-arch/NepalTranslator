@@ -386,10 +386,10 @@ const [ttsReady, setTtsReady] = useState(false);
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <View style={s.inputBottom}>
-              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0 }]}>
+              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.textSub }]}>
                 <Animated.View style={[
                   s.modeIndicator,
-                  { backgroundColor: t.primary + '18' },
+                  { backgroundColor: scheme === 'dark' ? '#4A1F25' : '#FAE0E4' },
                   { borderWidth: 1, borderColor: t.primary },
                   { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 74] }) }] }
                 ]} />
@@ -602,6 +602,7 @@ const s = StyleSheet.create({
     top: -2, bottom: -2,
     width: 72,
     borderRadius: 12,
+    zIndex: 1,
   },
   modeBtn: {
     flexDirection: 'row',
@@ -611,7 +612,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     width: 72,
     justifyContent: 'center',
-    zIndex: 1,
+    zIndex: 2,
   },
   modeBtnText: { fontSize: 11, fontWeight: '600' },
   charCount: { fontSize: 12 },
