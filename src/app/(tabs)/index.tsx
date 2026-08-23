@@ -386,12 +386,12 @@ const [ttsReady, setTtsReady] = useState(false);
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <View style={s.inputBottom}>
-              <View style={[s.modeContainer, { backgroundColor: t.cardAlt }]}>
+              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0 }]}>
                 <Animated.View style={[
                   s.modeIndicator,
                   { backgroundColor: t.primary + '18' },
                   { borderWidth: 1, borderColor: t.primary },
-                  { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 82] }) }] }
+                  { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 74] }) }] }
                 ]} />
                 <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('quick')}>
                   <Animated.View style={{ transform: [{ scale: mode === 'quick' ? iconBounce : 1 }] }}>
@@ -599,8 +599,8 @@ const s = StyleSheet.create({
   },
   modeIndicator: {
     position: 'absolute',
-    top: 2, bottom: 2,
-    width: 80,
+    top: -2, bottom: -2,
+    width: 72,
     borderRadius: 12,
   },
   modeBtn: {
@@ -609,7 +609,7 @@ const s = StyleSheet.create({
     gap: 4,
     paddingVertical: 4,
     paddingHorizontal: 12,
-    width: 80,
+    width: 72,
     justifyContent: 'center',
     zIndex: 1,
   },
