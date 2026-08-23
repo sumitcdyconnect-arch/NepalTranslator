@@ -389,7 +389,7 @@ const [ttsReady, setTtsReady] = useState(false);
               <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.textSub }]}>
                 <Animated.View style={[
                   s.modeIndicator,
-                  { backgroundColor: scheme === 'dark' ? '#4A1F25' : '#FAE0E4' },
+                  { backgroundColor: scheme === 'dark' ? '#5C2530' : '#F5DEE2' },
                   { borderWidth: 1, borderColor: t.primary },
                   { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [2, 74] }) }] }
                 ]} />
@@ -592,8 +592,8 @@ const s = StyleSheet.create({
   },
   modeContainer: {
     flexDirection: 'row',
-    borderRadius: 14,
-    padding: 2,
+    borderRadius: 18,
+    padding: 0,
     position: 'relative',
     alignSelf: 'flex-start',
   },
@@ -601,7 +601,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: -2, bottom: -2,
     width: 72,
-    borderRadius: 12,
+    borderRadius: 16,
     zIndex: 1,
   },
   modeBtn: {
