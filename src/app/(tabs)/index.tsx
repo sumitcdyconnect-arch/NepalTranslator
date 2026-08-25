@@ -93,6 +93,7 @@ const [mode, setMode] = useState<'quick' | 'precise'>('quick');
 const modeAnim = useRef(new Animated.Value(0)).current;
 const iconBounce = useRef(new Animated.Value(1)).current;
 const switchMode = (newMode: 'quick' | 'precise') => {
+  if (result) { collapseIsland(); setResult(''); }
   setMode(newMode);
   Animated.spring(modeAnim, {
     toValue: newMode === 'quick' ? 0 : 1,
@@ -179,13 +180,17 @@ const [ttsReady, setTtsReady] = useState(false);
   });
 
   const swapLanguages = () => {
+    collapseIsland();
+    const prevResult = result;
+    const prevInput = inputText;
     setFromLang(toLang);
     setToLang(fromLang);
-    setInputText(result);
-    setResult(inputText);
+    setInputText(prevResult);
+    setResult('');
   };
 
   const startVoice = async () => {
+    if (result) { collapseIsland(); setResult(''); }
     if (!ExpoSpeechRecognitionModule) {
       Alert.alert('Not available', 'Voice input requires the full app build.');
       return;
@@ -210,8 +215,8 @@ const [ttsReady, setTtsReady] = useState(false);
     if (!activated) {
       const { allowed, remaining } = await useCredit();
       if (!allowed) {
-        Alert.alert('No credits remaining', 'Purchase unlimited access to continue.');
         collapseIsland();
+        Alert.alert('No credits remaining', 'Purchase unlimited access to continue.');
         return;
       }
       setCredits(remaining);
@@ -236,13 +241,14 @@ const [ttsReady, setTtsReady] = useState(false);
     setWasVoiceInput(false);
   }
       } else {
+        collapseIsland();
         Alert.alert('Error', data.error || 'Translation failed.');
         setResult('');
       }
     } catch {
+      collapseIsland();
       Alert.alert('Error', 'Cannot reach server. Check your connection.');
       setResult('');
-      collapseIsland();
     } finally {
       setLoading(false);
     }
@@ -344,7 +350,7 @@ const [ttsReady, setTtsReady] = useState(false);
                 <TouchableOpacity
                   key={lang.code}
                   style={[s.pickerItem, fromLang.code === lang.code && { backgroundColor: t.primary + '18' }]}
-                  onPress={() => { setFromLang(lang); setShowFromPicker(false); }}
+                  onPress={() => { setFromLang(lang); setShowFromPicker(false); if (result) { collapseIsland(); setResult(''); } }}
                 >
                   <Text style={[s.pickerText, { color: fromLang.code === lang.code ? t.primary : t.text }]}>
                     {lang.label}
@@ -362,7 +368,7 @@ const [ttsReady, setTtsReady] = useState(false);
                 <TouchableOpacity
                   key={lang.code}
                   style={[s.pickerItem, toLang.code === lang.code && { backgroundColor: t.primary + '18' }]}
-                  onPress={() => { setToLang(lang); setShowToPicker(false); }}
+                  onPress={() => { setToLang(lang); setShowToPicker(false); if (result) { collapseIsland(); setResult(''); } }}
                 >
                   <Text style={[s.pickerText, { color: toLang.code === lang.code ? t.primary : t.text }]}>
                     {lang.label}
