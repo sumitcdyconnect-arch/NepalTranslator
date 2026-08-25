@@ -90,11 +90,13 @@ export default function TranslatorScreen() {
   const [wasVoiceInput, setWasVoiceInput] = useState(false);
 const [speaking, setSpeaking] = useState(false);
 const [mode, setMode] = useState<'quick' | 'precise'>('quick');
+const [activeVisual, setActiveVisual] = useState<'quick' | 'precise'>('quick');
 const modeAnim = useRef(new Animated.Value(0)).current;
 const iconBounce = useRef(new Animated.Value(1)).current;
 const switchMode = (newMode: 'quick' | 'precise') => {
   if (result) { collapseIsland(); setResult(''); }
-  setMode(newMode);
+  setActiveVisual(newMode); // immediate visual update
+  setMode(newMode); // actual mode for API
   Animated.spring(modeAnim, {
     toValue: newMode === 'quick' ? 0 : 1,
     useNativeDriver: true,
@@ -400,15 +402,15 @@ const [ttsReady, setTtsReady] = useState(false);
                 ]} />
                 <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('quick')}>
                   <Animated.View style={{ transform: [{ scale: mode === 'quick' ? iconBounce : 1 }] }}>
-                    <MaterialCommunityIcons name='lightning-bolt' size={12} color={mode === 'quick' ? t.primary : t.textSub} />
+                    <MaterialCommunityIcons name='lightning-bolt' size={12} color={activeVisual === 'quick' ? t.primary : t.textSub} />
                   </Animated.View>
-                  <Text style={[s.modeBtnText, { color: mode === 'quick' ? t.primary : t.textSub }]}>Quick</Text>
+                  <Text style={[s.modeBtnText, { color: activeVisual === 'quick' ? t.primary : t.textSub }]}>Quick</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('precise')}>
                   <Animated.View style={{ transform: [{ scale: mode === 'precise' ? iconBounce : 1 }] }}>
-                    <MaterialCommunityIcons name='target' size={12} color={mode === 'precise' ? t.primary : t.textSub} />
+                    <MaterialCommunityIcons name='target' size={12} color={activeVisual === 'precise' ? t.primary : t.textSub} />
                   </Animated.View>
-                  <Text style={[s.modeBtnText, { color: mode === 'precise' ? t.primary : t.textSub }]}>Precise</Text>
+                  <Text style={[s.modeBtnText, { color: activeVisual === 'precise' ? t.primary : t.textSub }]}>Precise</Text>
                 </TouchableOpacity>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
