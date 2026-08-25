@@ -391,7 +391,7 @@ const [ttsReady, setTtsReady] = useState(false);
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <View style={s.inputBottom}>
-              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.border }]}>
+              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.border, alignSelf: 'center' }]}>
                 <Animated.View style={[
                   s.modeIndicator,
                   { backgroundColor: scheme === 'dark' ? '#4A1F25' : '#FAE0E4' },
