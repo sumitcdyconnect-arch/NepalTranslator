@@ -532,7 +532,7 @@ const s = StyleSheet.create({
 
   inputCard: {
     borderRadius: 16, borderWidth: 1,
-    padding: 16, gap: 8,
+    paddingTop: 16, paddingHorizontal: 10, paddingBottom: 6, gap: 8,
     minHeight: 120,
     position: 'relative',
   },
