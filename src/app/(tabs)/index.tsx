@@ -1,5 +1,5 @@
-import * as Clipboard from 'expo-clipboard';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import * as Speech from 'expo-speech';
 
 let ExpoSpeechRecognitionModule: any = null;
@@ -12,28 +12,27 @@ try {
   // Not available in Expo Go
 }
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { useFocusEffect, router } from 'expo-router';
-import Reanimated, { useSharedValue, useAnimatedStyle, withSpring, withTiming, interpolate, Easing } from 'react-native-reanimated';
+import { debugReset, getCredits, initCredits, isActivated, useCredit } from '@/utils/credits';
+import { router, useFocusEffect } from 'expo-router';
+import { StatusBar } from 'expo-status-bar';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Animated,
   ActivityIndicator,
   Alert,
+  Animated,
+  Dimensions,
   Keyboard,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
-  useColorScheme,
-  Platform,
-  Dimensions,
+  useColorScheme
 } from 'react-native';
-import { ScrollView } from 'react-native';
+import Reanimated, { useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { StatusBar } from 'expo-status-bar';
-import { initCredits, getCredits, useCredit, isActivated, debugReset } from '@/utils/credits';
 
 const LANGUAGES = [
   { code: 'en', label: 'English' },
@@ -386,11 +385,11 @@ const [ttsReady, setTtsReady] = useState(false);
               onFocus={() => { if (result) { collapseIsland(); setResult(''); } }}
             />
             <View style={s.inputBottom}>
-              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.textSub }]}>
+              <View style={[s.modeContainer, { backgroundColor: t.cardAlt, padding: 0, borderWidth: 0.5, borderColor: t.border }]}>
                 <Animated.View style={[
                   s.modeIndicator,
                   { backgroundColor: scheme === 'dark' ? '#4A1F25' : '#FAE0E4' },
-                  { borderWidth: 1, borderColor: t.primary },
+                  { borderWidth: 1, borderColor: t.primary + '44' },
                   { transform: [{ translateX: modeAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 72] }) }] }
                 ]} />
                 <TouchableOpacity style={s.modeBtn} onPress={() => switchMode('quick')}>
@@ -592,7 +591,7 @@ const s = StyleSheet.create({
   },
   modeContainer: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 13,
     padding: 2,
     position: 'relative',
     alignSelf: 'flex-start',
@@ -601,7 +600,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     top: -2, bottom: -2,
     width: 72,
-    borderRadius: 12,
+    borderRadius: 13,
     zIndex: 1,
   },
   modeBtn: {
